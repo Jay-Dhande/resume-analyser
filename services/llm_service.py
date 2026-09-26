@@ -1,6 +1,8 @@
 import os
 
 from google import genai
+from google.genai import errors
+
 
 
 class LLMService:
@@ -9,11 +11,22 @@ class LLMService:
         self.client = genai.Client(
             api_key=os.getenv("GEMINI_API_KEY")
         )
-
+        self.model = os.getenv("GEMINI_MODEL")
+    
     def generate(self, prompt: str) -> str:
-        response = self.client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=prompt
-        )
+        max_retries = 3
 
-        return response.text
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=prompt
+                )
+
+                return response.text
+
+            except errors.ServerError:
+                if attempt == max_retries - 1:
+                    raise
+
+                time.sleep(2 ** attempt)
