@@ -1,8 +1,12 @@
 import os
+import time
 
 from google import genai
 from google.genai import errors
+from models.resume import Resume
+from dotenv import load_dotenv
 
+load_dotenv()
 
 
 class LLMService:
@@ -30,3 +34,33 @@ class LLMService:
                     raise
 
                 time.sleep(2 ** attempt)
+                
+    def parse_resume(self, resume_text: str) -> Resume:
+     max_retries = 3
+
+     for attempt in range(max_retries):
+        try:
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=f"""
+                Extract the resume information from the text below.
+
+                Do not invent information.
+                If information is missing, leave the field empty.
+
+                Resume:
+                {resume_text}
+                """,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": Resume,
+                },
+            )
+
+            return Resume.model_validate_json(response.text)
+
+        except errors.ServerError:
+            if attempt == max_retries - 1:
+                raise
+
+            time.sleep(2 ** attempt)                
