@@ -9,7 +9,8 @@ from models.resume import Resume
 from services.llm_service import LLMService
 from services.pdf_service import PDFService
 from services.deterministic_analyzer import DeterministicAnalyzer
-
+from models.job import JobDescription
+from services.job_matcher import JobMatcher
 
 load_dotenv()
 
@@ -18,6 +19,7 @@ app = FastAPI()
 llm_service = LLMService()
 pdf_service = PDFService()
 deterministic_analyzer = DeterministicAnalyzer()
+job_matcher = JobMatcher()
 
 
 class ChatRequest(BaseModel):
@@ -77,3 +79,10 @@ def analyze_resume(resume: Resume):
             llm_analysis.ats.append(finding)
 
     return llm_analysis
+
+@app.post("/resume/match")
+def match_resume(
+    resume: Resume,
+    job: JobDescription
+):
+    return job_matcher.match(resume, job)
