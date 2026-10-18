@@ -89,12 +89,30 @@ class ResumeMatchRequest(BaseModel):
     resume: Resume
     job: JobRequirements    
 
+class ResumeJobMatchRequest(BaseModel):
+    resume: Resume
+    job_description: str
+
 @app.post("/resume/match")
 def match_resume(request: ResumeMatchRequest):
     return job_matcher.match(
         request.resume,
         request.job
     )
+
+@app.post("/resume/match-job")
+def match_resume_to_job(request: ResumeJobMatchRequest):
+    try:
+        job_requirements = llm_service.parse_job_description(
+            request.job_description
+        )
+    except errors.ServerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Job parsing service is temporarily unavailable. Please try again later."
+        )
+
+    return job_matcher.match(request.resume, job_requirements)
 
 @app.post("/job/parse")
 def parse_job(request: JobDescriptionRequest):
