@@ -6,6 +6,9 @@ from io import BytesIO
 from fastapi import HTTPException
 from google.genai import errors
 from models.resume import Resume
+from models.analysis import ResumeAnalysis
+from models.job_match import JobMatch
+from models.suggestions import ResumeSuggestions
 from services.llm_service import LLMService
 from services.pdf_service import PDFService
 from services.deterministic_analyzer import DeterministicAnalyzer
@@ -93,6 +96,11 @@ class ResumeJobMatchRequest(BaseModel):
     resume: Resume
     job_description: str
 
+class ResumeSuggestionsRequest(BaseModel):
+    resume: Resume
+    analysis: ResumeAnalysis
+    job_match: JobMatch
+
 @app.post("/resume/match")
 def match_resume(request: ResumeMatchRequest):
     return job_matcher.match(
@@ -113,6 +121,30 @@ def match_resume_to_job(request: ResumeJobMatchRequest):
         )
 
     return job_matcher.match(request.resume, job_requirements)
+
+@app.post("/resume/suggestions", response_model=ResumeSuggestions)
+def suggest_resume_improvements(request: ResumeSuggestionsRequest):
+    try:
+        suggestions = llm_service.suggest_improvements(
+            request.resume,
+            request.analysis,
+            request.job_match,
+        )
+    except errors.ServerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Resume suggestions service is temporarily unavailable. Please try again later."
+        )
+
+    category_order = {
+        "missing_required_skill": 0,
+        "missing_required_experience": 1,
+        "resume_quality": 2,
+    }
+    suggestions.suggestions.sort(
+        key=lambda suggestion: category_order[suggestion.category]
+    )
+    return suggestions
 
 @app.post("/job/parse")
 def parse_job(request: JobDescriptionRequest):

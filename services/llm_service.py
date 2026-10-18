@@ -7,6 +7,8 @@ from models.resume import Resume
 from models.analysis import ResumeAnalysis
 from dotenv import load_dotenv
 from models.job import JobRequirements
+from models.job_match import JobMatch
+from models.suggestions import ResumeSuggestions
 
 load_dotenv()
 
@@ -38,13 +40,13 @@ class LLMService:
                 time.sleep(2 ** attempt)
                 
     def parse_resume(self, resume_text: str) -> Resume:
-     max_retries = 3
+        max_retries = 3
 
-     for attempt in range(max_retries):
-        try:
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=f"""
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=f"""
                 Extract the resume information from the text below.
 
                 Do not invent information.
@@ -53,19 +55,19 @@ class LLMService:
                 Resume:
                 {resume_text}
                 """,
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": Resume,
-                },
-            )
+                    config={
+                        "response_mime_type": "application/json",
+                        "response_schema": Resume,
+                    },
+                )
 
-            return Resume.model_validate_json(response.text)
+                return Resume.model_validate_json(response.text)
 
-        except errors.ServerError:
-            if attempt == max_retries - 1:
-                raise
+            except errors.ServerError:
+                if attempt == max_retries - 1:
+                    raise
 
-            time.sleep(2 ** attempt)    
+                time.sleep(2 ** attempt)
             
     def analyze_resume(self, resume: Resume) -> ResumeAnalysis:
         response = self.client.models.generate_content(
@@ -136,3 +138,52 @@ class LLMService:
         )
 
         return JobRequirements.model_validate_json(response.text)
+
+    def suggest_improvements(
+        self,
+        resume: Resume,
+        analysis: ResumeAnalysis,
+        job_match: JobMatch,
+    ) -> ResumeSuggestions:
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=f"""
+                        Create concise, actionable resume improvement suggestions using
+                        only the facts in the supplied resume, analysis, and job match.
+
+                        Rules:
+                        - Never invent candidate skills, experience, achievements, or metrics.
+                        - Use evidence from the supplied data for every suggestion.
+                        - Do not phrase a missing skill or experience as something the
+                            candidate already has. Recommend adding it only if the candidate
+                            can truthfully support it; otherwise suggest emphasizing relevant
+                            evidence that is actually present.
+                        - First suggest missing required skills from job_match.missing_skills
+                            with category "missing_required_skill".
+                        - Next suggest missing required experience from
+                            job_match.missing_experience_requirements with category
+                            "missing_required_experience".
+                        - Follow those with resume quality issues that are present in
+                            analysis findings, using category "resume_quality".
+                        - Do not create a suggestion for a missing requirement or quality
+                            issue that is not present in the supplied data.
+                        - Use high priority for missing required skills and experience.
+                            For resume quality issues, use the finding's severity to choose
+                            high, medium, or low.
+
+                        Resume:
+                        {resume.model_dump_json()}
+
+                        Resume Analysis:
+                        {analysis.model_dump_json()}
+
+                        Job Match:
+                        {job_match.model_dump_json()}
+                        """,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": ResumeSuggestions,
+            },
+        )
+
+        return ResumeSuggestions.model_validate_json(response.text)
