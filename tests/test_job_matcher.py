@@ -1,5 +1,8 @@
 from models.resume import Resume
-from models.job import JobDescription
+from models.job import JobRequirements
+from services.job_matcher import JobMatcher
+from models.resume import Resume
+from models.job import JobRequirements
 from services.job_matcher import JobMatcher
 
 
@@ -8,9 +11,7 @@ def test_exact_skill_match():
         skills=["Java", "Python", "Kafka"]
     )
 
-    job = JobDescription(
-        title="Backend Engineer",
-        description="Backend role",
+    job = JobRequirements(
         required_skills=["Java", "Kafka"]
     )
 
@@ -25,9 +26,7 @@ def test_skill_alias_match():
         skills=["AWS Lambda", "Java"]
     )
 
-    job = JobDescription(
-        title="Cloud Engineer",
-        description="Cloud role",
+    job = JobRequirements(
         required_skills=["AWS", "Java"]
     )
 
@@ -42,9 +41,7 @@ def test_missing_skill():
         skills=["Java", "Kafka"]
     )
 
-    job = JobDescription(
-        title="Backend Engineer",
-        description="Backend role",
+    job = JobRequirements(
         required_skills=["Java", "Kubernetes"]
     )
 
@@ -68,9 +65,7 @@ def test_matching_experience():
         ]
     )
 
-    job = JobDescription(
-        title="Backend Engineer",
-        description="Backend role",
+    job = JobRequirements(
         required_skills=["Java", "Spring Boot"]
     )
 
@@ -78,3 +73,78 @@ def test_matching_experience():
 
     assert len(result.matching_experience) == 1
     assert "Goldman Sachs" in result.matching_experience[0]
+    
+
+def test_required_experience_matched():
+    resume = Resume(
+        experience=[
+            {
+                "company": "Goldman Sachs",
+                "role": "Software Engineer",
+                "responsibilities": [
+                    "Built backend services using Java and Spring Boot"
+                ],
+            }
+        ]
+    )
+
+    job = JobRequirements(
+        required_experience=["Built backend services using Java"]
+    )
+
+    result = JobMatcher().match(resume, job)
+
+    assert "Built backend services using Java" in (
+        result.matched_experience_requirements
+    )
+    assert result.missing_experience_requirements == []
+
+
+def test_required_experience_missing():
+    resume = Resume(
+        experience=[
+            {
+                "company": "Goldman Sachs",
+                "role": "Software Engineer",
+                "responsibilities": [
+                    "Built backend services using Java"
+                ],
+            }
+        ]
+    )
+
+    job = JobRequirements(
+        required_experience=["Experience with Kubernetes deployment"]
+    )
+
+    result = JobMatcher().match(resume, job)
+
+    assert result.missing_experience_requirements == [
+        "Experience with Kubernetes deployment"
+    ]
+
+
+def test_preferred_experience_matched():
+    resume = Resume(
+        experience=[
+            {
+                "company": "Goldman Sachs",
+                "role": "Software Engineer",
+                "responsibilities": [
+                    "Developed REST APIs using Spring Boot"
+                ],
+            }
+        ]
+    )
+
+    job = JobRequirements(
+        preferred_experience=["Developed REST APIs"]
+    )
+
+    result = JobMatcher().match(resume, job)
+
+    assert result.matched_preferred_experience == [
+        "Developed REST APIs"
+    ]
+    assert result.missing_preferred_experience == []
+    

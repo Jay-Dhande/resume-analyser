@@ -11,6 +11,7 @@ from services.pdf_service import PDFService
 from services.deterministic_analyzer import DeterministicAnalyzer
 from models.job import JobDescription
 from services.job_matcher import JobMatcher
+from models.job import JobRequirements
 
 load_dotenv()
 
@@ -24,6 +25,10 @@ job_matcher = JobMatcher()
 
 class ChatRequest(BaseModel):
     prompt: str
+    
+class JobDescriptionRequest(BaseModel):
+    title: str | None = None
+    description: str    
 
 
 @app.get("/health")
@@ -80,9 +85,20 @@ def analyze_resume(resume: Resume):
 
     return llm_analysis
 
+class ResumeMatchRequest(BaseModel):
+    resume: Resume
+    job: JobRequirements    
+
 @app.post("/resume/match")
-def match_resume(
-    resume: Resume,
-    job: JobDescription
-):
-    return job_matcher.match(resume, job)
+def match_resume(request: ResumeMatchRequest):
+    return job_matcher.match(
+        request.resume,
+        request.job
+    )
+
+@app.post("/job/parse")
+def parse_job(request: JobDescriptionRequest):
+    return llm_service.parse_job_description(
+        request.description
+    )
+    

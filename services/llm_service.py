@@ -6,6 +6,7 @@ from google.genai import errors
 from models.resume import Resume
 from models.analysis import ResumeAnalysis
 from dotenv import load_dotenv
+from models.job import JobRequirements
 
 load_dotenv()
 
@@ -102,3 +103,36 @@ class LLMService:
                 finding.source = "llm"
 
         return analysis
+    
+    def parse_job_description(
+        self,
+        job_description: str
+        ) -> JobRequirements:
+
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=f"""
+            Extract the requirements from this job description.
+
+            Extract:
+            - required technical skills
+            - preferred technical skills
+            - required experience
+            - preferred experience
+
+            Rules:
+            - Only extract information explicitly present in the job description.
+            - Do not invent requirements.
+            - Keep skills concise and standardized.
+            - If a category has no information, return an empty list.
+
+            Job Description:
+            {job_description}
+            """,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": JobRequirements,
+            },
+        )
+
+        return JobRequirements.model_validate_json(response.text)
