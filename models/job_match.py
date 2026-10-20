@@ -12,7 +12,11 @@ class JobMatch(BaseModel):
     matching_experience: list[str] = Field(default_factory=list)
     matched_experience_requirements: list[str] = Field(default_factory=list)
     missing_experience_requirements: list[str] = Field(default_factory=list)
+    uncertain_experience_requirements: list[str] = Field(default_factory=list)
 
     matched_preferred_experience: list[str] = Field(default_factory=list)
     missing_preferred_experience: list[str] = Field(default_factory=list)
+    uncertain_preferred_experience_requirements: list[str] = Field(
+        default_factory=list
+    )
     summary: str

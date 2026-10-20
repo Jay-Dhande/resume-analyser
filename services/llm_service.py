@@ -158,6 +158,8 @@ class LLMService:
                             candidate already has. Recommend adding it only if the candidate
                             can truthfully support it; otherwise suggest emphasizing relevant
                             evidence that is actually present.
+                        - Do not recommend adding a skill that is already supported by the
+                            resume's skills, experience responsibilities, or projects.
                         - First suggest missing required skills from job_match.missing_skills
                             with category "missing_required_skill".
                         - Next suggest missing required experience from
@@ -167,6 +169,9 @@ class LLMService:
                             analysis findings, using category "resume_quality".
                         - Do not create a suggestion for a missing requirement or quality
                             issue that is not present in the supplied data.
+                        - Do not recommend rewriting experience to demonstrate a requirement
+                            already listed as matched, and do not infer tenure from uncertain
+                            employment dates.
                         - Use high priority for missing required skills and experience.
                             For resume quality issues, use the finding's severity to choose
                             high, medium, or low.
